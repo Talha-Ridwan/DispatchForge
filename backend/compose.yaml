@@ -1,0 +1,47 @@
+services:
+  backend:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    working_dir: /src/backend
+    command: dotnet watch run --urls http://0.0.0.0:8080 --no-launch-profile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=db;Port=5432;Database=dispatchforge;Username=postgres;Password=postgres
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+    volumes:
+      # bind-mount source straight from host instead of COPY, so edits show up without a rebuild
+      - ./backend:/src/backend
+      # reuse local user-secrets (Jwt:Key etc.) instead of duplicating them in the compose file
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      # keep container-built bin/obj separate from host's (Windows binaries won't run in the Linux image)
+      - backend_bin:/src/backend/bin
+      - backend_obj:/src/backend/obj
+      # cache restored packages across container recreations
+      - nuget_cache:/root/.nuget/packages
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dispatchforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  backend_bin:
+  backend_obj:
+  nuget_cache:
