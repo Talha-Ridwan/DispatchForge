@@ -1,8 +1,11 @@
 using System.Text;
 using backend.Data;
+using backend.Mappers;
 using backend.Repositories;
 using backend.Utilities;
+using backend.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,6 +20,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<JwtUtil>();
+builder.Services.AddScoped<UserMapper>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 

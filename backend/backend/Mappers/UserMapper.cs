@@ -5,14 +5,15 @@ namespace backend.Mappers;
 
 public class UserMapper
 {
-    public UserResponseDto ToResponse(User user)
+    public UserResponseDto ToResponse(User user, string token)
     {
         return new UserResponseDto
         {
             Email = user.Email,
             Id = user.Id,
             Role = user.Role,
-            Username = user.Username
+            Username = user.Username,
+            JwtToken = token
         };
     }
 

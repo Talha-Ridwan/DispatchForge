@@ -1,21 +1,58 @@
 ﻿using backend.DTOs;
+using backend.Entities;
+using backend.Mappers;
 using backend.Repositories;
 using backend.Utilities;
+using Microsoft.AspNetCore.Identity;
 
 namespace backend.Services;
 
 public class UserService : IUserService
 {
-    private readonly UserRepository _userRepository;
+    private readonly IUserRepository _userRepository;
     private readonly JwtUtil _jwtUtil;
-    public UserService(UserRepository userRepository, JwtUtil jwtUtil)
+    private readonly UserMapper _userMapper;
+    private readonly IPasswordHasher<User> _passwordHasher;
+    public UserService(IUserRepository userRepository,
+        JwtUtil jwtUtil,
+        UserMapper userMapper,
+        IPasswordHasher<User> passwordHasher)
     {
         _userRepository = userRepository;
         _jwtUtil = jwtUtil;
+        _userMapper = userMapper;
+        _passwordHasher = passwordHasher;
     }
 
-    public Task<UserResponseDto> LoginUser(int userId)
+    public async Task<UserResponseDto> LoginUser(UserRequestDto userRequestDto)
     {
-        
+        var queriedUser = await _userRepository.GetUserByUsername(userRequestDto.Username);
+        if (queriedUser == null ||
+            _passwordHasher.VerifyHashedPassword(queriedUser, queriedUser.Password, userRequestDto.Password)
+                == PasswordVerificationResult.Failed)
+        {
+            throw new UnauthorizedAccessException("Invalid username or password.");
+        }
+
+        var token = _jwtUtil.CreateToken(queriedUser);
+
+        var response = _userMapper.ToResponse(queriedUser, token);
+        return response;
+    }
+
+    public async Task<UserResponseDto> CreateUser(UserRequestDto userRequestDto)
+    {
+        var user = new User();
+        user.Role = userRequestDto.Role;
+        user.Username = userRequestDto.Username;
+        user.Email = userRequestDto.Email;
+        user.Password = _passwordHasher.HashPassword(user, userRequestDto.Password);
+
+        return _userMapper.ToResponse(await _userRepository.SaveUser(user), string.Empty);
+    }
+
+    public async Task DeleteUser(UserRequestDto userRequestDto)
+    {
+        await _userRepository.DeleteUser(_userRepository.GetUserByUsername(userRequestDto.Username).Id);
     }
 }
