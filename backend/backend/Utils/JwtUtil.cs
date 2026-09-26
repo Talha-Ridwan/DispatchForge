@@ -43,6 +43,51 @@ public class JwtUtil
 
     public bool ValidateToken(string token)
     {
-        return token.StartsWith("Bearer ", StringComparison.InvariantCultureIgnoreCase);
+        return ValidateToken(token, out _);
+    }
+
+    public bool ValidateToken(string token, out ClaimsPrincipal? principal)
+    {
+        principal = null;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            token = token["Bearer ".Length..].Trim();
+        }
+
+        var key = _config["Jwt:Key"];
+        if (string.IsNullOrEmpty(key))
+        {
+            return false;
+        }
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _config["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = _config["Jwt:Audience"],
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        try
+        {
+            principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            return validatedToken is JwtSecurityToken jwtToken &&
+                   jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            principal = null;
+            return false;
+        }
     }
 }
