@@ -2,7 +2,7 @@
 using backend.Entities;
 using backend.Mappers;
 using backend.Repositories;
-using backend.Utilities;
+using backend.Utils;
 using Microsoft.AspNetCore.Identity;
 
 namespace backend.Services;

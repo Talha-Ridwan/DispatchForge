@@ -2,11 +2,12 @@ using backend.DTOs;
 using backend.Mappers;
 using backend.Repositories;
 using backend.Services;
-using backend.Utilities;
-using Microsoft.Extensions.Configuration;
+using backend.Utils;
+using backend.Settings;
+using Microsoft.Extensions.Options;
 using NSubstitute;
-using backend.Entities;              // User
-using Microsoft.AspNetCore.Identity; // PasswordHasher<T>
+using backend.Entities;
+using Microsoft.AspNetCore.Identity;
 namespace backend.Tests.Services;
 
 public class UserServiceTests
@@ -14,21 +15,20 @@ public class UserServiceTests
 
     private readonly IUserRepository _userRepository;
     private readonly UserService _sut; //accr for system under test
-    private readonly IConfiguration _config = new ConfigurationBuilder().
-        AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Jwt:Key"] = "32323232323232323232323232323232",
-            ["Jwt:Issuer"] = "what do I write here?",
-            ["Jwt:Audience"] = "Uhh, hello everyone?",
-        })
-        .Build();
+
+    private readonly JwtSettings _jwtSettings = new()
+    {
+        Key = "32323232323232323232323232323232",
+        Issuer = "What do I write here?",
+        Audience = "Umm, Hello?"
+    };
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
     
     
     public UserServiceTests()
     {
         _userRepository = Substitute.For<IUserRepository>();
-        _sut = new UserService(_userRepository, new JwtUtil(_config), new UserMapper(), _hasher);
+        _sut = new UserService(_userRepository, new JwtUtil(Options.Create(_jwtSettings)), new UserMapper(), _hasher);
     }
     
     

@@ -3,16 +3,18 @@ using System.Security.Claims;
 using System.Text;
 using backend.Entities;
 using Microsoft.IdentityModel.Tokens;
+using backend.Settings;
+using Microsoft.Extensions.Options;
 
-namespace backend.Utilities;
+namespace backend.Utils;
 
 public class JwtUtil
 {
-    private readonly IConfiguration _config;
+    private readonly JwtSettings _settings;
 
-    public JwtUtil(IConfiguration config)
+    public JwtUtil(IOptions<JwtSettings> options)
     {
-        _config = config;
+        _settings = options.Value;
     }
 
     public string CreateToken(User user)
@@ -25,14 +27,14 @@ public class JwtUtil
         };
 
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_config["Jwt:Key"]!)
+            Encoding.UTF8.GetBytes(_settings.Key)
         );
 
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
             claims: claims,
             expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: creds
@@ -59,7 +61,7 @@ public class JwtUtil
             token = token["Bearer ".Length..].Trim();
         }
 
-        var key = _config["Jwt:Key"];
+        var key = _settings.Key;
         if (string.IsNullOrEmpty(key))
         {
             return false;
@@ -69,9 +71,9 @@ public class JwtUtil
         var validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = _config["Jwt:Issuer"],
+            ValidIssuer = _settings.Issuer,
             ValidateAudience = true,
-            ValidAudience = _config["Jwt:Audience"],
+            ValidAudience = _settings.Audience,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             ValidateLifetime = true,
