@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using backend.DataStructure;
+
 namespace backend.DTOs;
 
 public class TenantRequestDto
@@ -10,13 +12,12 @@ public class TenantRequestDto
     [StringLength(30),  MinLength(3)]
     public string Subscription { get; set; } = string.Empty;
     [Required]
-    [RegularExpression("Enabled", ErrorMessage = "Status must be enabled or disabled")]
-    public string Status { get; set; } = string.Empty;
+    public TenantStatus Status { get; set; }
+
     [Required]
-    [StringLength(30),  MinLength(3)]
-    public string MaxConcurrentDeliveries { get; set; } = string.Empty;
+    [Range(1,1000)]
+    public int MaxConcurrentDeliveries { get; set; } = 100;
     [Required] 
-    public int RateLimitPerMinute {get; set;} = 30000;
-    [Required]
-    public DateTime CreatedAt { get; set; }
+    [Range(1,30000)]
+    public int RateLimitPerMinute {get; set;} = 15000;
 }
