@@ -1,16 +1,17 @@
 using System.Text;
-using backend.Controllers;
-using backend.Data;
 using backend.Mappers;
+using backend.Data;
 using backend.Repositories;
 using backend.Utils;
 using backend.Entities;
+using backend.Handlers;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using backend.Settings;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,8 +57,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+app.UseExceptionHandler();
 app.MapControllers().RequireAuthorization();
 
 // Configure the HTTP request pipeline.
