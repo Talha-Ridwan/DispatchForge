@@ -1,0 +1,19 @@
+### Create User
+POST http://localhost:5066/api/User/register
+Content-Type: application/json
+
+{
+  "Username" : "John Doe",
+  "Password" : "supersecretducksauce",
+  "Email" : "valid@email.com",
+  "Role" : "Admin"
+}
+
+### Login User
+POST http://localhost:5066/api/User/login
+Content-Type: application/json
+
+{
+  "Username" : "John Doe",
+  "Password" : "supersecretducsauce"
+}

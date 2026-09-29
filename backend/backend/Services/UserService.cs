@@ -24,14 +24,14 @@ public class UserService : IUserService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<UserResponseDto> LoginUser(UserRequestDto userRequestDto)
+    public async Task<UserResponseDto?> LoginUser(UserLoginRequestDto userLoginRequestDto)
     {
-        var queriedUser = await _userRepository.GetUserByUsername(userRequestDto.Username);
+        var queriedUser = await _userRepository.GetUserByUsername(userLoginRequestDto.Username);
         if (queriedUser == null ||
-            _passwordHasher.VerifyHashedPassword(queriedUser, queriedUser.Password, userRequestDto.Password)
+            _passwordHasher.VerifyHashedPassword(queriedUser, queriedUser.Password, userLoginRequestDto.Password)
                 == PasswordVerificationResult.Failed)
         {
-            throw new UnauthorizedAccessException("Invalid username or password.");
+            return null;
         }
 
         var token = _jwtUtil.CreateToken(queriedUser);

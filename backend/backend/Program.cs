@@ -1,9 +1,11 @@
 using System.Text;
+using backend.Controllers;
 using backend.Data;
 using backend.Mappers;
 using backend.Repositories;
 using backend.Utils;
 using backend.Entities;
+using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,10 +21,19 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<JwtUtil>();
+builder.Services.AddControllers();
+builder.Services.AddAuthorization();
+//User
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<UserMapper>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<JwtUtil>();
+
+//Tenants
+builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddScoped<TenantMapper>();
+builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
@@ -45,9 +56,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
 
 var app = builder.Build();
+app.MapControllers().RequireAuthorization();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

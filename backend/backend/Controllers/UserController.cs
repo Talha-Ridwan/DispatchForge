@@ -1,5 +1,6 @@
 ﻿using backend.DTOs;
 using backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers;
@@ -8,24 +9,26 @@ namespace backend.Controllers;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly UserService _userService;
+    private readonly IUserService _userService;
 
-    public UserController(UserService userService)
+    public UserController(IUserService userService)
     {
         _userService = userService;
     }
-
+    
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> RegisterUser(UserRequestDto userRequestDto)
     {
         UserResponseDto registeredUser = await _userService.CreateUser(userRequestDto);
         return Ok(registeredUser);
     }
-
+    
+    [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<IActionResult> LoginUser(UserRequestDto userRequestDto)
+    public async Task<IActionResult> LoginUser(UserLoginRequestDto userLoginRequestDto)
     {
-        UserResponseDto userResponseDto = await _userService.LoginUser(userRequestDto);
-        return Ok(userResponseDto);
+        UserResponseDto? userResponseDto = await _userService.LoginUser(userLoginRequestDto);
+        return userResponseDto == null ? Unauthorized() : Ok(userResponseDto);
     }
 }
