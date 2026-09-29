@@ -1,0 +1,24 @@
+### Create Tenant
+POST http://localhost:5066/api/Tenant/create
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiSm9obiBEb2UiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsImV4cCI6MTc5MTMwODI1NiwiaXNzIjoiRGlzcGF0Y2hGb3JnZSIsImF1ZCI6IkRpc3BhdGNoRm9yZ2VDbGllbnQifQ.ql6ESd7DGvrA5To-debRZSfArHhVJL1aX8ojO9svCFU
+
+{
+  "Name" : "ABC Enterprise Limited",
+  "Subscription" : "Placeholder",
+  "Status" : 0,
+  "MaxConcurrentDeliveries" : "1000",
+  "RateLimitPerMinute" : "10000"
+}
+### DeleteTenant
+DELETE http://localhost:5066/api/Tenant/delete/01a0ee54-d6c0-7de9-a38c-3f77eff0b61e
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiSm9obiBEb2UiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsImV4cCI6MTc5MTMwODI1NiwiaXNzIjoiRGlzcGF0Y2hGb3JnZSIsImF1ZCI6IkRpc3BhdGNoRm9yZ2VDbGllbnQifQ.ql6ESd7DGvrA5To-debRZSfArHhVJL1aX8ojO9svCFU
+
+
+###
+
+
+

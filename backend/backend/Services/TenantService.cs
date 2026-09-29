@@ -48,9 +48,10 @@ public class TenantService : ITenantService
         return _tenantMapper.ToResponse(tenant);
     }
 
-    public async Task DeleteTenant(Guid id)
+    public async Task<bool> DeleteTenant(Guid id)
     {
-        await _tenantRepository.DeleteTenantAsync(id);
+        var what = await _tenantRepository.DeleteTenantAsync(id);
+        return what != 0;
     }
 
     public async Task<List<TenantResponseDto>> GetTenants()

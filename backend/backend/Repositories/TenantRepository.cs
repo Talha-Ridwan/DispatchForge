@@ -37,8 +37,8 @@ public class TenantRepository : ITenantRepository
         return tenant;
     }
 
-    public async Task DeleteTenantAsync(Guid id)
+    public async Task<int> DeleteTenantAsync(Guid id)
     {
-        await _dbContext.Tenants.Where(t => t.Id == id).ExecuteDeleteAsync();
+        return await _dbContext.Tenants.Where(t => t.Id == id).ExecuteDeleteAsync();
     }
 }
