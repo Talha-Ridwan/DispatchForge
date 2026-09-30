@@ -31,4 +31,10 @@ public class UserController : ControllerBase
         UserResponseDto? userResponseDto = await _userService.LoginUser(userLoginRequestDto);
         return userResponseDto == null ? Unauthorized() : Ok(userResponseDto);
     }
+
+    public async Task<IActionResult> deleteUser(UserRequestDto userRequestDto)
+    {
+        var what = await _userService.DeleteUser(userRequestDto);
+        return what ? Ok() : NotFound();
+    }
 }

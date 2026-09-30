@@ -51,10 +51,9 @@ public class UserService : IUserService
         return _userMapper.ToResponse(await _userRepository.SaveUser(user), string.Empty);
     }
 
-    public async Task DeleteUser(UserRequestDto userRequestDto) //2 round trips but user deletion is not a high concurrency task here so we can let it slide
+    public async Task<bool> DeleteUser(UserRequestDto userRequestDto) 
     {
-        var user =  await _userRepository.GetUserByUsername(userRequestDto.Username);
-        if(user is null) return;
-        await _userRepository.DeleteUser(user.Id);
+        int what = await _userRepository.DeleteUser(userRequestDto.Username);
+        return what == 0 ? false : true;
     }
 }
