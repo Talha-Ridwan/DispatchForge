@@ -2,6 +2,7 @@ namespace backend.DataStructure;
 
 public enum  TenantStatus
 {
-    Active,
-    Inactive
+    Active = 0,
+    Inactive = 1,
+    MarkedForDeath = 2
 }

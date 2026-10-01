@@ -64,6 +64,5 @@ public class UserServiceTests
         Assert.Empty(result.JwtToken);
         Assert.Equal(1, result.Id);
         await _userRepository.Received(1).SaveUser(Arg.Is<User>(u => u.Password != reqdto.Password));
-
     }
 }
