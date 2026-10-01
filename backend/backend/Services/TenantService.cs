@@ -1,7 +1,10 @@
+using backend.DataStructure;
 using backend.DTOs;
 using backend.Entities;
 using backend.Mappers;
 using backend.Repositories;
+using Microsoft.AspNetCore.Http.HttpResults;
+
 namespace backend.Services;
 
 public class TenantService : ITenantService
@@ -49,8 +52,15 @@ public class TenantService : ITenantService
 
     public async Task<bool> DeleteTenant(Guid id)
     {
-        var what = await _tenantRepository.DeleteTenantAsync(id);
-        return what != 0;
+        Tenant? tenant = await _tenantRepository.GetTenantAsync(id);
+        if (tenant == null)
+        {
+            return false;
+        }
+
+        tenant.TenantStatus = TenantStatus.MarkedForDeath;
+        await _tenantRepository.UpdateTenantAsync(tenant);
+        return true;
     }
 
     public async Task<List<TenantResponseDto>> GetTenants()
