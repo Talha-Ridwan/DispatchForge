@@ -77,10 +77,6 @@ namespace backend.Migrations
                     b.Property<int>("RateLimitPerMinute")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Subscription")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("TenantStatus")
                         .HasColumnType("integer");
 
@@ -123,7 +119,7 @@ namespace backend.Migrations
                     b.HasOne("backend.Entities.Tenant", null)
                         .WithMany("Destinations")
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

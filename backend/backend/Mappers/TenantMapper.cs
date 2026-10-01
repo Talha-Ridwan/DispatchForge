@@ -11,7 +11,6 @@ public class TenantMapper
         {
             Id = tenant.Id,
             MaxConcurrentDeliveries = tenant.MaxConcurrentDeliveries,
-            Subscription = tenant.Subscription,
             Name = tenant.Name,
             RateLimitPerMinute = tenant.RateLimitPerMinute,
             Status = tenant.TenantStatus
@@ -25,7 +24,6 @@ public class TenantMapper
         return new Tenant()
         {
             Name = tenantRequestDto.Name,
-            Subscription = tenantRequestDto.Subscription,
             TenantStatus = tenantRequestDto.Status,
             MaxConcurrentDeliveries = tenantRequestDto.MaxConcurrentDeliveries,
             RateLimitPerMinute = tenantRequestDto.RateLimitPerMinute

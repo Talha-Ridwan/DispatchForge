@@ -8,9 +8,8 @@ public class TenantRequestDto
     [Required]
     [StringLength(30),  MinLength(3)]
     public string Name { get; set; } = string.Empty;
-    [Required]
-    [StringLength(30),  MinLength(3)]
-    public string Subscription { get; set; } = string.Empty;
+
+
     [Required]
     public TenantStatus Status { get; set; }
 

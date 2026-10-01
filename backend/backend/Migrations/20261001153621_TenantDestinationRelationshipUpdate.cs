@@ -6,11 +6,15 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace backend.Migrations
 {
     /// <inheritdoc />
-    public partial class AddDestinations : Migration
+    public partial class TenantDestinationRelationshipUpdate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "Subscription",
+                table: "Tenants");
+
             migrationBuilder.CreateTable(
                 name: "Destinations",
                 columns: table => new
@@ -32,7 +36,7 @@ namespace backend.Migrations
                         column: x => x.TenantId,
                         principalTable: "Tenants",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -46,6 +50,13 @@ namespace backend.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Destinations");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Subscription",
+                table: "Tenants",
+                type: "text",
+                nullable: false,
+                defaultValue: "");
         }
     }
 }

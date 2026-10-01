@@ -6,7 +6,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hc
 
 {
   "Name" : "ABC Enterprise Limited",
-  "Subscription" : "Placeholder",
   "Status" : 0,
   "MaxConcurrentDeliveries" : "1000",
   "RateLimitPerMinute" : "10000"

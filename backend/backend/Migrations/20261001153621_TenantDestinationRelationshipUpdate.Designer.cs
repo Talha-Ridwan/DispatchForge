@@ -12,8 +12,8 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261001072402_AddDestinations")]
-    partial class AddDestinations
+    [Migration("20261001153621_TenantDestinationRelationshipUpdate")]
+    partial class TenantDestinationRelationshipUpdate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -80,10 +80,6 @@ namespace backend.Migrations
                     b.Property<int>("RateLimitPerMinute")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Subscription")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("TenantStatus")
                         .HasColumnType("integer");
 
@@ -126,7 +122,7 @@ namespace backend.Migrations
                     b.HasOne("backend.Entities.Tenant", null)
                         .WithMany("Destinations")
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

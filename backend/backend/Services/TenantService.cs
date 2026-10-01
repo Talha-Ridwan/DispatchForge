@@ -30,7 +30,6 @@ public class TenantService : ITenantService
         }
 
         toEdit.Name = tenantRequestDto.Name;
-        toEdit.Subscription = tenantRequestDto.Subscription;
         toEdit.TenantStatus = tenantRequestDto.Status;
         toEdit.MaxConcurrentDeliveries = tenantRequestDto.MaxConcurrentDeliveries;
         toEdit.RateLimitPerMinute = tenantRequestDto.RateLimitPerMinute;
