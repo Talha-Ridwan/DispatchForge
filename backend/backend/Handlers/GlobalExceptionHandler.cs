@@ -1,5 +1,6 @@
-using backend.Data;
+using backend.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Handlers;
 
@@ -11,9 +12,26 @@ public class GlobalExceptionHandler : IExceptionHandler
         _logger = logger;
     }
 
-    public ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Unhandled Exception");
-        return ValueTask.FromResult(true);
+        var status = exception switch
+        {
+            DuplicateEventTypeException => StatusCodes.Status409Conflict,
+            EventTypeLimitReachedException => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status500InternalServerError
+        };
+        
+        if (status == StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogError(exception, "Unhandled Exception");
+        }
+
+        httpContext.Response.StatusCode = status;
+        await httpContext.Response.WriteAsJsonAsync(new ProblemDetails()
+        {
+            Status = status,
+            Title = status == StatusCodes.Status500InternalServerError ? "Something went wrong" : exception.Message
+        }, cancellationToken);
+        return true;
     }
 };

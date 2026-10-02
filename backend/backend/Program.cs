@@ -36,6 +36,15 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<TenantMapper>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 
+//EventTypes
+builder.Services.AddScoped<IEventTypeService, EventTypeService>();
+builder.Services.AddScoped<EventTypeMapper>();
+builder.Services.AddScoped<IEventTypeRepository, EventTypeRepository>();
+
+//Destinations
+builder.Services.AddScoped<DestinationMapper>();
+builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
+
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
 
