@@ -1,4 +1,5 @@
 using backend.Data;
+using backend.DataStructure;
 using backend.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,9 +37,11 @@ public class EventTypeRepository : IEventTypeRepository
         return eventType;
     }
 
-    public async Task<int> DeleteEventTypeAsync(Guid id)
+    public async Task<int> DeleteMarkedEventTypesAsync()
     {
-        return await _dbContext.EventTypes.Where(e => e.Id == id).ExecuteDeleteAsync();
+        return await _dbContext.EventTypes
+        .Where(e => e.Status == EventTypeStatus.MarkedForDeath)
+        .ExecuteDeleteAsync();
     }
 
 

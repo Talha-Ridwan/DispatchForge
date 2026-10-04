@@ -9,4 +9,5 @@ public interface IDestinationRepository
     Task<Destination> AddDestinationAsync(Destination destination);
     Task<Destination> UpdateDestinationAsync(Destination destination);
     Task<int> DeleteDestinationAsync(Guid tenantId, Guid id);
+    Task<int> ClearEventBitAsync(Guid tenantId, int bitPosition);
 }

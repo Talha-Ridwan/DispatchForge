@@ -28,11 +28,11 @@ namespace backend.Controllers
             return Ok(response);
         }
 
-        [HttpDelete("id:Guid")]
+        [HttpDelete("{id:Guid}")]
         public async Task<IActionResult> DeleteEvent(Guid tenantId, Guid id)
         {
-            var response = await _eventTypeService.DeleteEventType(tenantId, id);
-            return response ? Ok() : BadRequest();
+            var response = await _eventTypeService.MarkEventForDeathAndClearBitsAsync(tenantId, id);
+            return response ? NoContent() : NotFound();
         }
     }
 }

@@ -40,4 +40,11 @@ public class DestinationRepository : IDestinationRepository
     {
         return await _dbContext.Destinations.Where(d => d.Id == id && d.TenantId == tenantId).ExecuteDeleteAsync();
     }
+
+    public async Task<int> ClearEventBitAsync(Guid tenantId, int bitPosition)
+    {
+        return await _dbContext.Destinations
+            .Where(d => d.TenantId == tenantId)
+            .ExecuteUpdateAsync(s => s.SetProperty(d => d.EventFilter, d => d.EventFilter & ~(1L << bitPosition)));
+    }
 }

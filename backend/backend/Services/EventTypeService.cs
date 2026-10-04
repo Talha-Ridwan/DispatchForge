@@ -16,18 +16,20 @@ public class EventTypeService : IEventTypeService
     private readonly EventTypeMapper _eventTypeMapper;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly ITenantRepository _tenantRepository;
+    private readonly IDestinationRepository _destinationRepository;
 
     // Index names EF generated in the EventTypes migration
     private const string NameIndex = "IX_EventTypes_TenantId_Name";
     private const string BitPositionIndex = "IX_EventTypes_TenantId_BitPosition";
     private const int MaxBitAttempts = 3;
 
-    public EventTypeService(AppDbContext dbContext, EventTypeMapper eventTypeMapper, IEventTypeRepository eventTypeRepository, ITenantRepository tenantRepository)
+    public EventTypeService(AppDbContext dbContext, EventTypeMapper eventTypeMapper, IEventTypeRepository eventTypeRepository, ITenantRepository tenantRepository, IDestinationRepository destinationRepository)
     {
         _dbContext = dbContext;
         _eventTypeMapper = eventTypeMapper;
         _eventTypeRepository = eventTypeRepository;
         _tenantRepository = tenantRepository;
+        _destinationRepository = destinationRepository;
     }
     
     public async Task<EventTypeResponseDto> CreateEventType(EventTypeRequestDto eventTypeRequestDto, Guid tenantId)
@@ -118,7 +120,7 @@ public class EventTypeService : IEventTypeService
         return responseDtos;
     }
 
-    public async Task<bool> DeleteEventType(Guid tenantId, Guid id)
+    public async Task<bool> MarkEventForDeathAndClearBitsAsync(Guid tenantId, Guid id)
     {
         EventType? eventType = await _eventTypeRepository.GetEventTypeAsync(tenantId, id);
         if (eventType == null || eventType.Status == EventTypeStatus.MarkedForDeath)
@@ -126,8 +128,12 @@ public class EventTypeService : IEventTypeService
             return false;
         }
 
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        await _destinationRepository.ClearEventBitAsync(tenantId, eventType.BitPosition);
         eventType.Status = EventTypeStatus.MarkedForDeath;
         await _eventTypeRepository.UpdateEventTypeAsync(eventType);
+        await transaction.CommitAsync();
+
         return true;
     }
 }
