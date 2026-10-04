@@ -46,7 +46,7 @@ public class TenantController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteTenant(Guid id)
     {
-        var what = await _tenantService.DeleteTenant(id);
+        var what = await _tenantService.MarkTenantForDeath(id);
         return what ? Accepted(): NotFound();
     }
 }

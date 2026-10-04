@@ -1,4 +1,5 @@
 using backend.Data;
+using backend.DataStructure;
 using backend.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,8 +38,8 @@ public class TenantRepository : ITenantRepository
         return tenant;
     }
 
-    public async Task<int> DeleteTenantAsync(Guid id)
+    public async Task<int> DeleteTenantAsync()
     {
-        return await _dbContext.Tenants.Where(t => t.Id == id).ExecuteDeleteAsync();
+        return await _dbContext.Tenants.Where(t => t.TenantStatus == TenantStatus.MarkedForDeath).ExecuteDeleteAsync(); //Cannot succeed always as one restrict constraint will kill the whole bulk, needs to change later.
     }
 }

@@ -9,5 +9,5 @@ public interface ITenantRepository
     Task<IEnumerable<Tenant>> GetTenantsAsync();
     Task<Tenant> AddTenantAsync(Tenant tenant);
     Task<Tenant> UpdateTenantAsync(Tenant tenant);
-    Task<int> DeleteTenantAsync(Guid id);
+    Task<int> DeleteTenantAsync();
 }

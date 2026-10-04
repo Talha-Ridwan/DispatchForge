@@ -50,7 +50,7 @@ public class TenantService : ITenantService
         return _tenantMapper.ToResponse(tenant);
     }
 
-    public async Task<bool> DeleteTenant(Guid id)
+    public async Task<bool> MarkTenantForDeath(Guid id)
     {
         Tenant? tenant = await _tenantRepository.GetTenantAsync(id);
         if (tenant == null)
