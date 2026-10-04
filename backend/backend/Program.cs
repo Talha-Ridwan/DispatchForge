@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using backend.Settings;
 using Microsoft.AspNetCore.Diagnostics;
+using backend.BackgroundJob;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,9 @@ builder.Services.AddScoped<IEventTypeRepository, EventTypeRepository>();
 //Destinations
 builder.Services.AddScoped<DestinationMapper>();
 builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
+
+//Janitor crew
+builder.Services.AddHostedService<CleanupService>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>

@@ -1,5 +1,6 @@
 using backend.DTOs;
 using backend.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -27,11 +28,11 @@ namespace backend.Controllers
             return Ok(response);
         }
 
-        [HttpDelete]
+        [HttpDelete("id:Guid")]
         public async Task<IActionResult> DeleteEvent(Guid tenantId, Guid id)
         {
-            var response = _eventTypeService.DeleteEventType(tenantId, id);
-            return Ok(response);
+            var response = await _eventTypeService.DeleteEventType(tenantId, id);
+            return response ? Ok() : BadRequest();
         }
     }
 }
