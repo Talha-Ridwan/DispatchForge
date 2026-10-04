@@ -15,35 +15,35 @@ public class TenantController : ControllerBase
         _tenantService = tenantService;
     }
 
-    [HttpPost("create")]
+    [HttpPost]
     public async Task<IActionResult> CreateTenant(TenantRequestDto tenantRequestDto)
     {
         TenantResponseDto created = await _tenantService.CreateTenant(tenantRequestDto);
         return CreatedAtAction(nameof(GetTenant), new { id = created.Id }, created);
     }
 
-    [HttpGet("getAll")]
+    [HttpGet]
     public async Task<IActionResult> GetTenants()
     {
         List<TenantResponseDto> tenants = await _tenantService.GetTenants();
         return Ok(tenants);
     }
 
-    [HttpGet("get/{id:guid}")]
+    [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetTenant(Guid id)
     {
         TenantResponseDto? tenant = await _tenantService.GetTenant(id);
         return tenant == null ? NotFound() : Ok(tenant);
     }
 
-    [HttpPut("update/{id:guid}")]
+    [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateTenant(Guid id, TenantRequestDto tenantRequestDto)
     {
         TenantResponseDto? updated = await _tenantService.UpdateTenant(id, tenantRequestDto);
         return updated == null ? NotFound() : Ok(updated);
     }
 
-    [HttpDelete("delete/{id:guid}")]
+    [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteTenant(Guid id)
     {
         var what = await _tenantService.DeleteTenant(id);
