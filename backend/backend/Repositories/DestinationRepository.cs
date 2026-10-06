@@ -17,7 +17,7 @@ public class DestinationRepository : IDestinationRepository
         return await _dbContext.Destinations.FirstOrDefaultAsync(d => d.Id == id && d.TenantId == tenantId);
     }
 
-    public async Task<IEnumerable<Destination>> GetDestinationsAsync(Guid tenantId)
+    public async Task<List<Destination>> GetDestinationsAsync(Guid tenantId)
     {
         return await _dbContext.Destinations.Where(d => d.TenantId == tenantId).ToListAsync();
     }
