@@ -43,6 +43,7 @@ builder.Services.AddScoped<EventTypeMapper>();
 builder.Services.AddScoped<IEventTypeRepository, EventTypeRepository>();
 
 //Destinations
+builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<DestinationMapper>();
 builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
 

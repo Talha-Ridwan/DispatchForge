@@ -19,6 +19,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             DuplicateEventTypeException => StatusCodes.Status409Conflict,
             EventTypeLimitReachedException => StatusCodes.Status409Conflict,
             TenantIdNotFoundException => StatusCodes.Status404NotFound,
+            UnknownEventTypeException => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status500InternalServerError
             
         };
