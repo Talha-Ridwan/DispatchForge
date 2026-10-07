@@ -37,9 +37,4 @@ public class TenantRepository : ITenantRepository
         await _dbContext.SaveChangesAsync();
         return tenant;
     }
-
-    public async Task<int> DeleteTenantAsync()
-    {
-        return await _dbContext.Tenants.Where(t => t.TenantStatus == TenantStatus.MarkedForDeath).ExecuteDeleteAsync(); //Cannot succeed always as one restrict constraint will kill the whole bulk, needs to change later.
-    }
 }

@@ -50,7 +50,9 @@ public class DestinationService : IDestinationService
             for (int j = 0; j < tenantEvents.Count; j++)
             {
                 if (tenantEvents[j].Name == eventTypes[i] && tenantEvents[j].Status != EventTypeStatus.MarkedForDeath)
-                {
+                {   
+                    /* OR flips this event's bit on and leaves the others alone.
+                     After the loop, every requested event has its own bit lit. */
                     mask |= 1L << tenantEvents[j].BitPosition;
                     found = true;
                     break;
@@ -72,6 +74,10 @@ public class DestinationService : IDestinationService
 
         for (int i = 0; i < tenantEvents.Count; i++)
         {
+            /*
+             * Keep only overlapping bits on, so whenever bitwise AND gives
+             * us non-zero, it indicates it's included in the mask
+             */
             if ((mask & 1L << tenantEvents[i].BitPosition) != 0)
             {
                 names.Add(tenantEvents[i].Name);

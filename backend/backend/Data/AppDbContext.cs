@@ -1,3 +1,4 @@
+using backend.DataStructure;
 using backend.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,10 +33,11 @@ public class AppDbContext : DbContext
             .WithOne()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
-        
+
         modelBuilder.Entity<EventType>()
             .HasIndex(e => new { e.TenantId, e.Name })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter(@"""Status"" <> 1");
         modelBuilder.Entity<EventType>()
             .HasIndex(e => new {e.TenantId, e.BitPosition})
             .IsUnique();
