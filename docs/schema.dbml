@@ -1,0 +1,93 @@
+// DispatchForge database schema
+// Paste into https://dbdiagram.io to see the diagram. Edit here, not there.
+// Source of truth is still the EF migrations; keep this file in sync.
+
+Project DispatchForge {
+  database_type: 'PostgreSQL'
+}
+
+// ---------- Control plane (built) ----------
+
+Table Tenants {
+  Id uuid [pk]
+  Name text [not null]
+  TenantStatus int [not null, note: 'enum TenantStatus']
+  MaxConcurrentDeliveries int [not null, default: 100]
+  RateLimitPerMinute int [not null, default: 30000]
+  CreatedAt timestamptz [not null]
+}
+
+Table EventTypes {
+  Id uuid [pk]
+  TenantId uuid [not null, ref: > Tenants.Id]
+  Name text [not null]
+  BitPosition int [not null, note: 'CHECK BETWEEN 0 AND 63']
+  Status int [not null, note: 'enum EventTypeStatus: 0 Active, 1 MarkedForDeath']
+
+  indexes {
+    (TenantId, BitPosition) [unique]
+    (TenantId, Name) [unique, note: 'filtered: WHERE "Status" <> 1']
+  }
+}
+
+Table Destinations {
+  Id uuid [pk]
+  TenantId uuid [not null, ref: > Tenants.Id]
+  Url text [not null]
+  EventFilter bigint [not null, note: 'bitmask over EventTypes.BitPosition']
+  CryptographyKeyPrimary text [not null, note: 'PDD wants binary (bytea)']
+  CryptographyKeySecondary text [note: 'for zero-downtime key rotation']
+  TimeoutMilliseconds int [not null, default: 20000]
+  CircuitState int [not null, note: 'enum CircuitState']
+
+  indexes {
+    TenantId
+  }
+}
+
+Table Users {
+  Id int [pk, increment]
+  Username text [not null]
+  Email text [not null]
+  Password text [not null, note: 'hashed']
+  Role text [not null]
+}
+
+// ---------- Data plane (to design) ----------
+
+// Partitioned by RANGE (ReceivedAt), one partition per week. Old weeks are dropped, not deleted.
+// Every unique key must include ReceivedAt, hence the composite PK.
+Table Events {
+  Id uuid [not null]
+  ReceivedAt timestamptz [not null, note: 'partition key']
+  TenantId uuid [not null, ref: > Tenants.Id]
+  EventTypeId uuid [not null, ref: > EventTypes.Id]
+  IdempotencyKey text [not null]
+  IdempotencyHash bytea [not null, note: 'SHA-256 of IdempotencyKey, 32 bytes']
+  Payload bytea [not null, note: 'raw body bytes, never parsed']
+
+  indexes {
+    (Id, ReceivedAt) [pk]
+    (TenantId, IdempotencyHash, ReceivedAt) [unique, note: 'dedup only within one week partition']
+  }
+}
+
+// One row per (event x matching destination). Deleted on success, so every row = still to do.
+Table DeliveryOutbox {
+  Id bigint [pk, increment]
+  EventId uuid [not null]
+  EventReceivedAt timestamptz [not null]
+  DestinationId uuid [not null, ref: > Destinations.Id]
+  TenantId uuid [not null, ref: > Tenants.Id, note: 'copied from event for fair-share scheduling']
+  AttemptCount int [not null, default: 0]
+  ScheduledAt timestamptz [not null, note: 'not before this time; retries push it forward']
+  LeasedBy text [note: 'worker id; null = unclaimed']
+  LeaseExpiresAt timestamptz [note: 'stale lease -> sibling worker reclaims']
+
+  indexes {
+    ScheduledAt
+  }
+}
+
+// Composite FK: Events PK is (Id, ReceivedAt)
+Ref: DeliveryOutbox.(EventId, EventReceivedAt) > Events.(Id, ReceivedAt)
