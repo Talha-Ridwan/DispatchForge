@@ -36,6 +36,8 @@ public class AppDbContext : DbContext
             .WithOne()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+        
+        
         modelBuilder.Entity<EventType>()
             .HasIndex(e => new { e.TenantId, e.Name })
             .IsUnique()
@@ -50,15 +52,26 @@ public class AppDbContext : DbContext
             .ToTable(t => t.HasCheckConstraint(
                 "CK_EventType_BitPosition",
                 "\"BitPosition\" BETWEEN 0 AND 63"));
+        
+
         modelBuilder.Entity<Event>()
+            .HasKey(e => new { e.Id, e.ReceivedAt });
+
+
+        modelBuilder.Entity<DeliveryOutbox>()
+            .HasOne<Event>()
+            .WithMany()
+            .HasForeignKey(d => new { d.EventId, d.EventReceivedAt })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DeliveryOutbox>()
+            .HasOne<Destination>()
+            .WithMany()
+            .HasForeignKey(d => d.DestinationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DeliveryOutbox>()
             .HasOne<Tenant>()
             .WithMany()
-            .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-        modelBuilder.Entity<Event>()
-            .HasOne<EventType>()
-            .WithMany()
-            .HasForeignKey(e => e.EventTypeId)
+            .HasForeignKey(d => d.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
