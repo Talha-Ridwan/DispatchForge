@@ -56,7 +56,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Event>()
             .HasKey(e => new { e.Id, e.ReceivedAt });
-
+        modelBuilder.Entity<Event>()
+            .HasIndex(e => new { e.TenantId, e.IdempotencyHash, e.ReceivedAt })
+            .IsUnique();
 
         modelBuilder.Entity<DeliveryOutbox>()
             .HasOne<Event>()
@@ -72,6 +74,8 @@ public class AppDbContext : DbContext
             .HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(d => d.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DeliveryOutbox>()
+            .HasIndex(d => d.ScheduledAt);
     }
 }

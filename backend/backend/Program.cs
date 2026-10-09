@@ -50,6 +50,10 @@ builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
 //Janitor crew
 builder.Services.AddHostedService<CleanupService>();
 
+//Partition maintenance (Events weekly partitions)
+builder.Services.AddScoped<IPartitionRepository, PartitionRepository>();
+builder.Services.AddHostedService<PartitionMaintenanceService>();
+
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
 

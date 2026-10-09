@@ -19,7 +19,7 @@ Table Tenants {
 
 Table EventTypes {
   Id uuid [pk]
-  TenantId uuid [not null, ref: > Tenants.Id]
+  TenantId uuid [not null]
   Name text [not null]
   BitPosition int [not null, note: 'CHECK BETWEEN 0 AND 63']
   Status int [not null, note: 'enum EventTypeStatus: 0 Active, 1 MarkedForDeath']
@@ -32,7 +32,7 @@ Table EventTypes {
 
 Table Destinations {
   Id uuid [pk]
-  TenantId uuid [not null, ref: > Tenants.Id]
+  TenantId uuid [not null]
   Url text [not null]
   EventFilter bigint [not null, note: 'bitmask over EventTypes.BitPosition']
   CryptographyKeyPrimary text [not null, note: 'PDD wants binary (bytea)']
@@ -53,15 +53,17 @@ Table Users {
   Role text [not null]
 }
 
-// ---------- Data plane (to design) ----------
+// ---------- Data plane (in EF model; migration pending, partitioning needs hand edits) ----------
 
 // Partitioned by RANGE (ReceivedAt), one partition per week. Old weeks are dropped, not deleted.
 // Every unique key must include ReceivedAt, hence the composite PK.
+// No outgoing FKs on purpose: history doesn't hold control-plane rows hostage.
+// TenantId / EventTypeId are plain columns; ingest validates them in code.
 Table Events {
   Id uuid [not null]
   ReceivedAt timestamptz [not null, note: 'partition key']
-  TenantId uuid [not null, ref: > Tenants.Id]
-  EventTypeId uuid [not null, ref: > EventTypes.Id]
+  TenantId uuid [not null, note: 'no FK']
+  EventTypeId uuid [not null, note: 'no FK; id not bit, so bit reuse cannot relabel history']
   IdempotencyKey text [not null]
   IdempotencyHash bytea [not null, note: 'SHA-256 of IdempotencyKey, 32 bytes']
   Payload bytea [not null, note: 'raw body bytes, never parsed']
@@ -77,8 +79,8 @@ Table DeliveryOutbox {
   Id bigint [pk, increment]
   EventId uuid [not null]
   EventReceivedAt timestamptz [not null]
-  DestinationId uuid [not null, ref: > Destinations.Id]
-  TenantId uuid [not null, ref: > Tenants.Id, note: 'copied from event for fair-share scheduling']
+  DestinationId uuid [not null]
+  TenantId uuid [not null, note: 'copied from event for fair-share scheduling']
   AttemptCount int [not null, default: 0]
   ScheduledAt timestamptz [not null, note: 'not before this time; retries push it forward']
   LeasedBy text [note: 'worker id; null = unclaimed']
@@ -89,5 +91,17 @@ Table DeliveryOutbox {
   }
 }
 
-// Composite FK: Events PK is (Id, ReceivedAt)
-Ref: DeliveryOutbox.(EventId, EventReceivedAt) > Events.(Id, ReceivedAt)
+// ---------- Foreign keys (all of them; mirrors AppDbContext) ----------
+
+Ref: EventTypes.TenantId > Tenants.Id [delete: restrict]
+Ref: Destinations.TenantId > Tenants.Id [delete: restrict]
+
+// Composite FK: Events PK is (Id, ReceivedAt). Safety net: blocks a partition drop while work is pending.
+Ref: DeliveryOutbox.(EventId, EventReceivedAt) > Events.(Id, ReceivedAt) [delete: restrict]
+// Work dies with its target.
+Ref: DeliveryOutbox.DestinationId > Destinations.Id [delete: cascade]
+Ref: DeliveryOutbox.TenantId > Tenants.Id [delete: cascade]
+
+// Decided 2026-10-09: Tenant -> EventTypes / Destinations stay RESTRICT (fail loudly on a bad delete).
+// Deleting a destination drops its pending deliveries; the frontend warns and the admin decides.
+// Tenant delete order: destinations (outbox cascades) -> event types -> tenant. Slower deletes are fine; ingest/worker never pay.
