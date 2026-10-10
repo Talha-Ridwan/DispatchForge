@@ -64,13 +64,25 @@ Table Events {
   ReceivedAt timestamptz [not null, note: 'partition key']
   TenantId uuid [not null, note: 'no FK']
   EventTypeId uuid [not null, note: 'no FK; id not bit, so bit reuse cannot relabel history']
-  IdempotencyKey text [not null]
-  IdempotencyHash bytea [not null, note: 'SHA-256 of IdempotencyKey, 32 bytes']
+  IdempotencyKey text [not null, note: 'raw sender key, kept for support lookups; dedup lives in DedupTables']
   Payload bytea [not null, note: 'raw body bytes, never parsed']
 
   indexes {
     (Id, ReceivedAt) [pk]
-    (TenantId, IdempotencyHash, ReceivedAt) [unique, note: 'dedup only within one week partition']
+  }
+}
+
+// Idempotency dedup. NOT partitioned, so the PK is truly unique per (tenant, key) across weeks.
+// (A unique index on Events would have to include ReceivedAt, so retries would slip through.)
+// No FKs on purpose (hot path; rows expire). Janitor deletes rows older than ~7 days.
+Table DedupTables {
+  TenantId uuid [not null, note: 'no FK']
+  IdempotencyHash bytea [not null, note: 'SHA-256 of IdempotencyKey, 32 bytes']
+  CreatedAt timestamptz [not null]
+
+  indexes {
+    (TenantId, IdempotencyHash) [pk]
+    CreatedAt [note: 'janitor cleanup']
   }
 }
 

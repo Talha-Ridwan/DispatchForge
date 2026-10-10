@@ -7,6 +7,5 @@ public class Event
     public Guid TenantId { get; set; }
     public Guid EventTypeId { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
-    public byte[] IdempotencyHash { get; set; } = [];
     public byte[] Payload { get; set; } = [];
 }

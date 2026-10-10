@@ -4,6 +4,6 @@ using backend.Entities;
 namespace backend.Repositories;
 
 public interface IEventRepository
-{
-    public Task<Event> CreateEvent(Guid tenantId, Guid eventTypeId, EventRequestDto eventRequestDto);
+{ 
+    public Task<Event> CreateEvent(Event @event);
 }
