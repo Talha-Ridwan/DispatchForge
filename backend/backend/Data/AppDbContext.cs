@@ -79,7 +79,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<IdempotencyRecord>()
             .HasKey(d => new { d.TenantId, d.IdempotencyHash });
         modelBuilder.Entity<IdempotencyRecord>()
-            .HasIndex(d => d.CreatedAt);
+            .HasIndex(d => d.CreatedAt); 
             
 
     }

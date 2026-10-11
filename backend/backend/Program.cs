@@ -52,7 +52,7 @@ builder.Services.AddScoped<IIdempotencyRecordRepository, IdempotencyRecordReposi
 
 //Events
 builder.Services.AddScoped<IEventRepository, EventRepository>();
-
+builder.Services.AddScoped<IEventService, EventService>();
 //DeliveryOutbox
 builder.Services.AddScoped<IDeliveryOutboxRepository, DeliveryOutboxRepository>();
 //Janitor crew
