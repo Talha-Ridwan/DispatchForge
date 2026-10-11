@@ -9,4 +9,5 @@ public interface IEventTypeRepository
     Task<EventType> AddEventTypeAsync(EventType eventType);
     Task<EventType> UpdateEventTypeAsync(EventType eventType);
     Task<int> DeleteMarkedEventTypesAsync();
+    Task<EventType?> GetEventTypeByNameAsync(Guid tenantId, string name);
 }

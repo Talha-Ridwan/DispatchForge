@@ -44,5 +44,8 @@ public class EventTypeRepository : IEventTypeRepository
         .ExecuteDeleteAsync();
     }
 
-
+    public async Task<EventType?> GetEventTypeByNameAsync(Guid tenantId, string name)
+    {
+        return await _dbContext.EventTypes.FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Name == name && e.Status != EventTypeStatus.MarkedForDeath);
+    }
 }

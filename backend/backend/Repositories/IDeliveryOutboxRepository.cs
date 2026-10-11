@@ -4,5 +4,5 @@ namespace backend.Repositories;
 
 public interface IDeliveryOutboxRepository
 {
-    public Task<DeliveryOutbox> CreateDeliveryOutbox(DeliveryOutbox deliveryOutbox);
+    public void CreateDeliveryOutboxes(List<DeliveryOutbox> deliveryOutboxes);
 }

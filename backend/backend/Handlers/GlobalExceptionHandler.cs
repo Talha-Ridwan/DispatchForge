@@ -20,8 +20,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             EventTypeLimitReachedException => StatusCodes.Status409Conflict,
             TenantIdNotFoundException => StatusCodes.Status404NotFound,
             UnknownEventTypeException => StatusCodes.Status400BadRequest,
+            NoMatchingDestinationException => StatusCodes.Status422UnprocessableEntity,
             _ => StatusCodes.Status500InternalServerError
-            
         };
         
         if (status == StatusCodes.Status500InternalServerError)
