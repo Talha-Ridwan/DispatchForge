@@ -1,9 +1,8 @@
-﻿using backend.DTOs;
-using backend.Entities;
+﻿using backend.Entities;
 
 namespace backend.Repositories;
 
 public interface IEventRepository
 { 
-    public Task<Event> CreateEvent(Event @event);
+    public void CreateEvent(Event @event);
 }

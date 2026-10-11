@@ -12,10 +12,8 @@ public class EventRepository : IEventRepository
         _dbContext = dbContext;
     }
 
-    public async Task<Event> CreateEvent(Event @event)
+    public void CreateEvent(Event @event)
     {
-        var savedEntity = await _dbContext.Events.AddAsync(@event);
-        var saveStatus = await _dbContext.SaveChangesAsync();
-        return @event;
+        _dbContext.Events.Add(@event);
     }
 }

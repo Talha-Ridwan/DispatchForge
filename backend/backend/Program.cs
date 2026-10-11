@@ -47,6 +47,12 @@ builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<DestinationMapper>();
 builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
 
+//IdempotencyTable
+builder.Services.AddScoped<IIdempotencyRecordRepository, IdempotencyRecordRepository>();
+
+//Events
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+
 //Janitor crew
 builder.Services.AddHostedService<CleanupService>();
 

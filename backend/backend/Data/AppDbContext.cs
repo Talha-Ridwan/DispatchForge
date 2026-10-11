@@ -16,7 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<EventType> EventTypes => Set<EventType>();
     public DbSet<Event> Events => Set<Event>();
     public DbSet<DeliveryOutbox> DeliveryOutboxes => Set<DeliveryOutbox>();
-    public DbSet<DedupTable> DedupTables => Set<DedupTable>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,9 +76,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<DeliveryOutbox>()
             .HasIndex(d => d.ScheduledAt);
 
-        modelBuilder.Entity<DedupTable>()
+        modelBuilder.Entity<IdempotencyRecord>()
             .HasKey(d => new { d.TenantId, d.IdempotencyHash });
-        modelBuilder.Entity<DedupTable>()
+        modelBuilder.Entity<IdempotencyRecord>()
             .HasIndex(d => d.CreatedAt);
             
 
