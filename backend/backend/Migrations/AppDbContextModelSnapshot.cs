@@ -114,10 +114,6 @@ namespace backend.Migrations
                     b.Property<Guid>("EventTypeId")
                         .HasColumnType("uuid");
 
-                    b.Property<byte[]>("IdempotencyHash")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasColumnType("text");
@@ -130,9 +126,6 @@ namespace backend.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id", "ReceivedAt");
-
-                    b.HasIndex("TenantId", "IdempotencyHash", "ReceivedAt")
-                        .IsUnique();
 
                     b.ToTable("Events");
                 });
@@ -169,6 +162,24 @@ namespace backend.Migrations
                         {
                             t.HasCheckConstraint("CK_EventType_BitPosition", "\"BitPosition\" BETWEEN 0 AND 63");
                         });
+                });
+
+            modelBuilder.Entity("backend.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("IdempotencyHash")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("TenantId", "IdempotencyHash");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("IdempotencyRecords");
                 });
 
             modelBuilder.Entity("backend.Entities.Tenant", b =>
