@@ -1,6 +1,7 @@
 // DispatchForge database schema
 // Paste into https://dbdiagram.io to see the diagram. Edit here, not there.
 // Source of truth is still the EF migrations; keep this file in sync.
+// Which service or worker touches which table: see architecture.md.
 
 Project DispatchForge {
   database_type: 'PostgreSQL'
@@ -12,8 +13,8 @@ Table Tenants {
   Id uuid [pk]
   Name text [not null]
   TenantStatus int [not null, note: 'enum TenantStatus']
-  MaxConcurrentDeliveries int [not null, default: 100]
-  RateLimitPerMinute int [not null, default: 30000]
+  MaxConcurrentDeliveries int [not null, note: 'C# default 100, no DB default']
+  RateLimitPerMinute int [not null, note: 'C# default 30000, no DB default']
   CreatedAt timestamptz [not null]
 }
 
@@ -22,7 +23,7 @@ Table EventTypes {
   TenantId uuid [not null]
   Name text [not null]
   BitPosition int [not null, note: 'CHECK BETWEEN 0 AND 63']
-  Status int [not null, note: 'enum EventTypeStatus: 0 Active, 1 MarkedForDeath']
+  Status int [not null, default: 0, note: 'enum EventTypeStatus: 0 Active, 1 MarkedForDeath']
 
   indexes {
     (TenantId, BitPosition) [unique]
@@ -37,7 +38,7 @@ Table Destinations {
   EventFilter bigint [not null, note: 'bitmask over EventTypes.BitPosition']
   CryptographyKeyPrimary text [not null, note: 'PDD wants binary (bytea)']
   CryptographyKeySecondary text [note: 'for zero-downtime key rotation']
-  TimeoutMilliseconds int [not null, default: 20000]
+  TimeoutMilliseconds int [not null, note: 'C# default 20000, no DB default']
   CircuitState int [not null, note: 'enum CircuitState']
 
   indexes {
@@ -53,7 +54,7 @@ Table Users {
   Role text [not null]
 }
 
-// ---------- Data plane (in EF model; migration pending, partitioning needs hand edits) ----------
+// ---------- Data plane (built; Events partitioning is hand-written SQL in migration 20261009101316) ----------
 
 // Partitioned by RANGE (ReceivedAt), one partition per week. Old weeks are dropped, not deleted.
 // Every unique key must include ReceivedAt, hence the composite PK.
@@ -87,19 +88,22 @@ Table IdempotencyRecords {
 }
 
 // One row per (event x matching destination). Deleted on success, so every row = still to do.
-Table DeliveryOutbox {
+Table DeliveryOutboxes {
   Id bigint [pk, increment]
   EventId uuid [not null]
   EventReceivedAt timestamptz [not null]
   DestinationId uuid [not null]
   TenantId uuid [not null, note: 'copied from event for fair-share scheduling']
-  AttemptCount int [not null, default: 0]
+  AttemptCount int [not null, note: 'ingest writer inserts 0; no DB default']
   ScheduledAt timestamptz [not null, note: 'not before this time; retries push it forward']
   LeasedBy text [note: 'worker id; null = unclaimed']
   LeaseExpiresAt timestamptz [note: 'stale lease -> sibling worker reclaims']
 
   indexes {
-    ScheduledAt
+    ScheduledAt [note: 'worker polling']
+    (EventId, EventReceivedAt) [note: 'FK index; partition detach checks it']
+    DestinationId [note: 'FK index; destination delete cascades through it']
+    TenantId [note: 'FK index']
   }
 }
 
@@ -109,10 +113,10 @@ Ref: EventTypes.TenantId > Tenants.Id [delete: restrict]
 Ref: Destinations.TenantId > Tenants.Id [delete: restrict]
 
 // Composite FK: Events PK is (Id, ReceivedAt). Safety net: blocks a partition drop while work is pending.
-Ref: DeliveryOutbox.(EventId, EventReceivedAt) > Events.(Id, ReceivedAt) [delete: restrict]
+Ref: DeliveryOutboxes.(EventId, EventReceivedAt) > Events.(Id, ReceivedAt) [delete: restrict]
 // Work dies with its target.
-Ref: DeliveryOutbox.DestinationId > Destinations.Id [delete: cascade]
-Ref: DeliveryOutbox.TenantId > Tenants.Id [delete: cascade]
+Ref: DeliveryOutboxes.DestinationId > Destinations.Id [delete: cascade]
+Ref: DeliveryOutboxes.TenantId > Tenants.Id [delete: cascade]
 
 // Decided 2026-10-09: Tenant -> EventTypes / Destinations stay RESTRICT (fail loudly on a bad delete).
 // Deleting a destination drops its pending deliveries; the frontend warns and the admin decides.
