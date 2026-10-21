@@ -24,8 +24,9 @@ public class EventService : IEventService
     private readonly IEventRepository _eventRepository;
     private readonly IDeliveryOutboxRepository _deliveryOutboxRepository;
     private readonly IIdempotencyRecordRepository _idempotencyRecordRepository;
-    
-    public EventService(AppDbContext dbContext, ITenantRepository tenantRepository, IEventTypeRepository eventTypeRepository, IDestinationRepository destinationRepository, ILogger<EventService> logger, IEventRepository eventRepository, IDeliveryOutboxRepository deliveryOutboxRepository, IIdempotencyRecordRepository idempotencyRecordRepository)
+    private readonly IngestQueue _ingestQueue;
+
+    public EventService(AppDbContext dbContext, ITenantRepository tenantRepository, IEventTypeRepository eventTypeRepository, IDestinationRepository destinationRepository, ILogger<EventService> logger, IEventRepository eventRepository, IDeliveryOutboxRepository deliveryOutboxRepository, IIdempotencyRecordRepository idempotencyRecordRepository, IngestQueue ingestQueue)
     {
         _dbContext = dbContext;
         _tenantRepository = tenantRepository;
@@ -35,6 +36,7 @@ public class EventService : IEventService
         _eventRepository = eventRepository;
         _deliveryOutboxRepository = deliveryOutboxRepository;
         _idempotencyRecordRepository = idempotencyRecordRepository;
+        _ingestQueue = ingestQueue;
     }
 
     private async Task<IngestReturn> ResolveRoutingAsync(Guid tenantId, EventRequestDto eventRequestDto)
@@ -115,24 +117,14 @@ public class EventService : IEventService
             });
         }
 
-        _eventRepository.CreateEvent(newEvent);
-        _idempotencyRecordRepository.CreateIdempotencyRecord(newIdempotencyRecord);
-        _deliveryOutboxRepository.CreateDeliveryOutboxes(newOutboxes);
+        var ticket = new IngestTicket(
+            newEvent,
+            newIdempotencyRecord,
+            newOutboxes,
+            new TaskCompletionSource<IngestOutcome>(TaskCreationOptions.RunContinuationsAsynchronously)
+        );
 
-        try
-        {
-            await _dbContext.SaveChangesAsync();
-        }
-        catch (DbUpdateException e)
-        {
-            if (e.InnerException is PostgresException pg
-                && pg.SqlState == PostgresErrorCodes.UniqueViolation
-                && pg.ConstraintName == IdempotencyRecordPk)
-            {
-                return;
-            }
-
-            throw;
-        }
+        await _ingestQueue.EnqueueAsync(ticket);
+        await ticket.TaskCompletionSource.Task;
     }
 }

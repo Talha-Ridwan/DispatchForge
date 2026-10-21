@@ -39,7 +39,7 @@ public class CleanupService : BackgroundService
             using IServiceScope scope = _scopeFactory.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IEventTypeRepository>();
 
-            int count = await repository.DeleteMarkedEventTypesAsync();
+            var count = await repository.DeleteMarkedEventTypesAsync();
             _logger.LogInformation("Janitor crew removed {Count} event types", count);
         }
         catch (Exception e)

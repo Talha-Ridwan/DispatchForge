@@ -13,6 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 using backend.Settings;
 using Microsoft.AspNetCore.Diagnostics;
 using backend.BackgroundJob;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,11 @@ builder.Services.AddHostedService<CleanupService>();
 //Partition maintenance (Events weekly partitions)
 builder.Services.AddScoped<IPartitionRepository, PartitionRepository>();
 builder.Services.AddHostedService<PartitionMaintenanceService>();
+
+//Ingest
+builder.Services.AddSingleton<IngestQueue>();
+builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(builder.Configuration.GetConnectionString("Default")!));
+builder.Services.AddHostedService<IngestWriterService>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
