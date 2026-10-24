@@ -17,6 +17,19 @@ public class DestinationMapper
         };
     }
 
+    public DestinationCreatedResponseDto ToCreatedResponse(Destination destination, List<string> eventTypeNames)
+    {
+        return new DestinationCreatedResponseDto()
+        {
+            Id = destination.Id,
+            Url = destination.Url,
+            TimeoutMilliseconds = destination.TimeoutMilliseconds,
+            CircuitState = destination.CircuitState,
+            EventTypes = eventTypeNames,
+            SigningKey = Convert.ToBase64String(destination.CryptographyKeyPrimary)
+        };
+    }
+
     public Destination ToEntity(DestinationRequestDto dto, Guid tenantId)
     {
         return new Destination()

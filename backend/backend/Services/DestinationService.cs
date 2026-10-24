@@ -21,7 +21,7 @@ public class DestinationService : IDestinationService
         _eventTypeRepository = eventTypeRepository;
     }
 
-    public async Task<DestinationResponseDto> CreateDestinationAsync(DestinationRequestDto destinationRequestDto, Guid tenantId)
+    public async Task<DestinationCreatedResponseDto> CreateDestinationAsync(DestinationRequestDto destinationRequestDto, Guid tenantId)
     {
         var tenantEvents = await _eventTypeRepository.GetEventTypesAsync(tenantId);
 
@@ -29,7 +29,7 @@ public class DestinationService : IDestinationService
         {
             CircuitState = CircuitState.Closed,
             CryptographyKeyPrimary = GenerateKey(),
-            CryptographyKeySecondary = "",
+            CryptographyKeySecondary = null,
             EventFilter = NameToBitMask(destinationRequestDto.EventTypes,tenantEvents),
             TenantId = tenantId,
             TimeoutMilliseconds = destinationRequestDto.TimeoutMilliseconds,
@@ -37,7 +37,7 @@ public class DestinationService : IDestinationService
         };
 
         var savedDestination = await _destinationRepository.AddDestinationAsync(destination);
-        return _destinationMapper.ToResponse(savedDestination, destinationRequestDto.EventTypes);
+        return _destinationMapper.ToCreatedResponse(savedDestination, destinationRequestDto.EventTypes);
     }
 
     private static long NameToBitMask(List<string> eventTypes, List<EventType> tenantEvents)
@@ -87,9 +87,9 @@ public class DestinationService : IDestinationService
         return names;
     }
 
-    private static string GenerateKey()
+    private static byte[] GenerateKey()
     {
-        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        return RandomNumberGenerator.GetBytes(32);
     }
 
 

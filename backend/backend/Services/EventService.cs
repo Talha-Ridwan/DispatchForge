@@ -1,41 +1,30 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using backend.Data;
 using backend.DataStructure;
 using backend.DTOs;
 using backend.Entities;
 using backend.Exceptions;
 using backend.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
+
 
 namespace backend.Services;
 
 public class EventService : IEventService
 {
-    private const string IdempotencyRecordPk = "PK_IdempotencyRecords";
-
-    private readonly AppDbContext _dbContext;
     private readonly ITenantRepository _tenantRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IDestinationRepository _destinationRepository;
     private readonly ILogger<EventService> _logger;
-    private readonly IEventRepository _eventRepository;
-    private readonly IDeliveryOutboxRepository _deliveryOutboxRepository;
-    private readonly IIdempotencyRecordRepository _idempotencyRecordRepository;
+
     private readonly IngestQueue _ingestQueue;
 
-    public EventService(AppDbContext dbContext, ITenantRepository tenantRepository, IEventTypeRepository eventTypeRepository, IDestinationRepository destinationRepository, ILogger<EventService> logger, IEventRepository eventRepository, IDeliveryOutboxRepository deliveryOutboxRepository, IIdempotencyRecordRepository idempotencyRecordRepository, IngestQueue ingestQueue)
+    public EventService(ITenantRepository tenantRepository, IEventTypeRepository eventTypeRepository, IDestinationRepository destinationRepository, ILogger<EventService> logger, IngestQueue ingestQueue)
     {
-        _dbContext = dbContext;
         _tenantRepository = tenantRepository;
         _eventTypeRepository = eventTypeRepository;
         _destinationRepository = destinationRepository;
         _logger = logger;
-        _eventRepository = eventRepository;
-        _deliveryOutboxRepository = deliveryOutboxRepository;
-        _idempotencyRecordRepository = idempotencyRecordRepository;
         _ingestQueue = ingestQueue;
     }
 

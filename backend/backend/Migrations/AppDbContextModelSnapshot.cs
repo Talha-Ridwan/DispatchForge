@@ -76,12 +76,12 @@ namespace backend.Migrations
                     b.Property<int>("CircuitState")
                         .HasColumnType("integer");
 
-                    b.Property<string>("CryptographyKeyPrimary")
+                    b.Property<byte[]>("CryptographyKeyPrimary")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("bytea");
 
-                    b.Property<string>("CryptographyKeySecondary")
-                        .HasColumnType("text");
+                    b.Property<byte[]>("CryptographyKeySecondary")
+                        .HasColumnType("bytea");
 
                     b.Property<long>("EventFilter")
                         .HasColumnType("bigint");

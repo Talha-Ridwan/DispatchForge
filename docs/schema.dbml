@@ -36,8 +36,8 @@ Table Destinations {
   TenantId uuid [not null]
   Url text [not null]
   EventFilter bigint [not null, note: 'bitmask over EventTypes.BitPosition']
-  CryptographyKeyPrimary text [not null, note: 'PDD wants binary (bytea)']
-  CryptographyKeySecondary text [note: 'for zero-downtime key rotation']
+  CryptographyKeyPrimary bytea [not null, note: 'HMAC key, 32 random bytes']
+  CryptographyKeySecondary bytea [note: 'for zero-downtime key rotation; NULL when unused']
   TimeoutMilliseconds int [not null, note: 'C# default 20000, no DB default']
   CircuitState int [not null, note: 'enum CircuitState']
 
