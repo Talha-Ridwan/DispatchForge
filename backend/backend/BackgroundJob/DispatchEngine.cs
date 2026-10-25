@@ -36,6 +36,8 @@ public class DispatchEngine : BackgroundService
         await Task.Yield();
         while(!stoppingToken.IsCancellationRequested)
         {
+           try{ 
+
             var batch = await ClaimBatchAsync(stoppingToken);
 
             if(batch.Count == 0)
@@ -43,7 +45,15 @@ public class DispatchEngine : BackgroundService
                 await Task.Delay(500, stoppingToken);
             }
 
-            
+            }catch(OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+
+            }
+            catch(Exception e)
+            {
+                _logger.LogError(e, "Dispatcher failed");
+                await Task.Delay(5000, stoppingToken);
+            }
         }
     }
 
