@@ -63,6 +63,7 @@ builder.Services.AddHostedService<PartitionMaintenanceService>();
 builder.Services.AddSingleton<IngestQueue>();
 builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(builder.Configuration.GetConnectionString("Default")!));
 builder.Services.AddHostedService<IngestWriterService>();
+builder.Services.AddHostedService<DispatchEngine>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
