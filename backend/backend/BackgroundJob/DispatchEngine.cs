@@ -34,22 +34,24 @@ public class DispatchEngine : BackgroundService
     private async Task DispatchEngineAsync(CancellationToken stoppingToken)
     {
         await Task.Yield();
-        while(!stoppingToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested)
         {
-           try{ 
-
-            var batch = await ClaimBatchAsync(stoppingToken);
-
-            if(batch.Count == 0)
-            {
-                await Task.Delay(500, stoppingToken);
-            }
-
-            }catch(OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            try
             {
 
+                var batch = await ClaimBatchAsync(stoppingToken);
+
+                if (batch.Count == 0)
+                {
+                    await Task.Delay(500, stoppingToken);
+                }
+
             }
-            catch(Exception e)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+
+            }
+            catch (Exception e)
             {
                 _logger.LogError(e, "Dispatcher failed");
                 await Task.Delay(5000, stoppingToken);
@@ -60,7 +62,8 @@ public class DispatchEngine : BackgroundService
     private async Task<List<ClaimedDelivery>> ClaimBatchAsync(CancellationToken stoppingToken)
     {
         await using var connection = await _dataSource.OpenConnectionAsync(stoppingToken);
-        var query = $"""
+        await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
+        var queryToGet = $"""
                 SELECT o."Id", o."EventId", o."EventReceivedAt", o."DestinationId", o."AttemptCount",
                        e."Payload",
                        d."Url", d."CryptographyKeyPrimary", d."TimeoutMilliseconds"
@@ -71,25 +74,49 @@ public class DispatchEngine : BackgroundService
                   AND o."ScheduledAt" <= NOW()
                 ORDER BY o."ScheduledAt"
                 LIMIT {dispatchBuffer}
+                FOR UPDATE OF o SKIP LOCKED
                 """;
-            await using var command = new NpgsqlCommand(query, connection);
-            await using var reader = await command.ExecuteReaderAsync(stoppingToken);
 
-            var batch = new List<ClaimedDelivery>(dispatchBuffer);
-            while(await reader.ReadAsync(stoppingToken))
-            {
-                batch.Add(new ClaimedDelivery(
-                    reader.GetInt64(0),
-                    reader.GetGuid(1),
-                    reader.GetDateTime(2),
-                    reader.GetGuid(3),
-                    reader.GetInt32(4),
-                    reader.GetFieldValue<byte[]>(5),
-                    reader.GetString(6),
-                    reader.GetFieldValue<byte[]>(7),
-                    reader.GetInt32(8)));
-            }
+        await using var getCommand = new NpgsqlCommand(queryToGet, connection, transaction);
+        await using var reader = await getCommand.ExecuteReaderAsync(stoppingToken);
 
-            return batch;
+        var batch = new List<ClaimedDelivery>(dispatchBuffer);
+        while (await reader.ReadAsync(stoppingToken))
+        {
+            batch.Add(new ClaimedDelivery(
+                reader.GetInt64(0),
+                reader.GetGuid(1),
+                reader.GetDateTime(2),
+                reader.GetGuid(3),
+                reader.GetInt32(4),
+                reader.GetFieldValue<byte[]>(5),
+                reader.GetString(6),
+                reader.GetFieldValue<byte[]>(7),
+                reader.GetInt32(8)));
+        }
+        
+        await reader.CloseAsync();
+        var ids = new List<long>();
+
+        for (int i = 0; i < batch.Count; i++)
+        {
+            ids.Add(batch[i].Id);
+        }
+        var queryToUpdate = $"""
+            UPDATE "DeliveryOutboxes"
+            SET "LeasedBy" = @leasedBy,
+            "LeaseExpiresAt" = NOW() + INTERVAL '120 seconds'
+            WHERE "Id" = ANY(@ids)
+            """;
+
+        await using var updateCommand = new NpgsqlCommand(queryToUpdate, connection, transaction);
+        updateCommand.Parameters.AddWithValue("leasedBy", "dispatcher-placehodler");
+        updateCommand.Parameters.AddWithValue("ids", ids);
+        await updateCommand.ExecuteNonQueryAsync(stoppingToken);
+        await transaction.CommitAsync(stoppingToken);
+        
+        return batch;
+
+
     }
 }
