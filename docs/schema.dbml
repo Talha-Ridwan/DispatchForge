@@ -96,7 +96,7 @@ Table DeliveryOutboxes {
   TenantId uuid [not null, note: 'copied from event for fair-share scheduling']
   AttemptCount int [not null, note: 'ingest writer inserts 0; no DB default']
   ScheduledAt timestamptz [not null, note: 'not before this time; retries push it forward']
-  LeasedBy text [note: 'worker id; null = unclaimed']
+  LeasedBy text [note: 'dispatch loop id machine:pid:loop; null = unclaimed']
   LeaseExpiresAt timestamptz [note: 'stale lease -> sibling worker reclaims']
 
   indexes {

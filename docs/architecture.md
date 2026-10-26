@@ -72,7 +72,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     PM("<b>PartitionMaintenanceService</b> · every 12 h<br/>create this week + 3 ahead<br/>detach + drop expired weeks")
-    DW("<b>DispatchWorker</b> · planned, Phase 1<br/>lease · sign · send · retry · dead-letter")
+    DW("<b>DispatchEngine</b> · 2 loops, background<br/>claim up to 200: FOR UPDATE SKIP LOCKED, 2-min lease<br/>planned, Phase 1: sign · send · retry · dead-letter")
     CL("<b>CleanupService</b> · every 30 min<br/>delete marked event types")
 
     Events[("Events<br/>weekly partitions")]
@@ -84,21 +84,21 @@ flowchart LR
     EventTypes[("EventTypes")]
 
     PM -->|"create · detach · drop partitions"| Events
-    DW -.->|"payload"| Events
-    DW -->|"lease SKIP LOCKED · retry · delete on 2xx"| Outbox
-    DW -->|"read URL · key · timeout<br/>Phase 2: write circuit state"| Destinations
-    DW -->|"signed POST"| Sub
-    DW -->|"poison · retry limit · age cap"| DL
+    DW -.->|"payload, joined at claim"| Events
+    DW -->|"claim: set LeasedBy · LeaseExpiresAt<br/>planned: retry · delete on 2xx"| Outbox
+    DW -->|"read URL · key · timeout at claim<br/>Phase 2: write circuit state"| Destinations
+    DW -->|"planned: signed POST"| Sub
+    DW -->|"planned: poison · retry limit · age cap"| DL
     CL -->|"planned: purge old"| DL
     CL -->|"planned: delete older than 7 days"| Idem
     CL -->|"delete marked"| EventTypes
 
     classDef planned stroke-dasharray: 6 4
-    class DW,DL planned
+    class DL planned
 ```
 
 ## Notes
 
-- **Ownership rule:** HTTP services own the control-plane tables; background workers own the data-plane tables. Only two things cross: deleting a destination cascades into the outbox, and the DispatchWorker writes `CircuitState` (Phase 2).
+- **Ownership rule:** HTTP services own the control-plane tables; background workers own the data-plane tables. Only two things cross: deleting a destination cascades into the outbox, and the DispatchEngine writes `CircuitState` (Phase 2).
 - **Partition drop safety net:** the outbox → Events FK blocks dropping a week that still has pending deliveries. Retention (7 days) is longer than the outbox age cap (3 days), so it shouldn't happen.
 - **Planned, not drawn yet:** the routing cache (Phase 4) replaces the 3 routing reads; the admin services will invalidate it when they change a tenant, event type or destination.
