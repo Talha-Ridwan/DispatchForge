@@ -25,13 +25,14 @@ public class DispatchEngine : BackgroundService
 
         for (int i = 0; i < _maxDispatchEngines; i++)
         {
-            dispatchers[i] = DispatchEngineAsync(stoppingToken);
+            var leasedBy = $"{Environment.MachineName}:{Environment.ProcessId}:{i}";
+            dispatchers[i] = DispatchEngineAsync(leasedBy, stoppingToken);
         }
 
         return Task.WhenAll(dispatchers);
     }
 
-    private async Task DispatchEngineAsync(CancellationToken stoppingToken)
+    private async Task DispatchEngineAsync(string leasedBy, CancellationToken stoppingToken)
     {
         await Task.Yield();
         while (!stoppingToken.IsCancellationRequested)
@@ -39,7 +40,7 @@ public class DispatchEngine : BackgroundService
             try
             {
 
-                var batch = await ClaimBatchAsync(stoppingToken);
+                var batch = await ClaimBatchAsync(leasedBy, stoppingToken);
 
                 if (batch.Count == 0)
                 {
@@ -59,7 +60,7 @@ public class DispatchEngine : BackgroundService
         }
     }
 
-    private async Task<List<ClaimedDelivery>> ClaimBatchAsync(CancellationToken stoppingToken)
+    private async Task<List<ClaimedDelivery>> ClaimBatchAsync(string leasedBy, CancellationToken stoppingToken)
     {
         await using var connection = await _dataSource.OpenConnectionAsync(stoppingToken);
         await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
@@ -94,7 +95,7 @@ public class DispatchEngine : BackgroundService
                 reader.GetFieldValue<byte[]>(7),
                 reader.GetInt32(8)));
         }
-        
+
         await reader.CloseAsync();
         var ids = new List<long>();
 
@@ -110,7 +111,7 @@ public class DispatchEngine : BackgroundService
             """;
 
         await using var updateCommand = new NpgsqlCommand(queryToUpdate, connection, transaction);
-        updateCommand.Parameters.AddWithValue("leasedBy", "dispatcher-placehodler");
+        updateCommand.Parameters.AddWithValue("leasedBy", leasedBy);
         updateCommand.Parameters.AddWithValue("ids", ids);
         await updateCommand.ExecuteNonQueryAsync(stoppingToken);
         await transaction.CommitAsync(stoppingToken);
