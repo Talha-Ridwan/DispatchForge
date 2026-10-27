@@ -9,14 +9,17 @@ public class DispatchEngine : BackgroundService
     private const int _maxDispatchEngines = 2;
     private readonly NpgsqlDataSource _dataSource;
     private readonly ILogger<DispatchEngine> _logger;
+    private readonly HttpClient _httpClient;
     private readonly int dispatchBuffer = 200;
 
     public DispatchEngine(
         NpgsqlDataSource dataSource,
-        ILogger<DispatchEngine> logger)
+        ILogger<DispatchEngine> logger,
+        HttpClient httpClient)
     {
         _dataSource = dataSource;
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,7 +61,7 @@ public class DispatchEngine : BackgroundService
                 await Task.Delay(5000, stoppingToken);
             }
         }
-    }
+    } 
 
     private async Task<List<ClaimedDelivery>> ClaimBatchAsync(string leasedBy, CancellationToken stoppingToken)
     {

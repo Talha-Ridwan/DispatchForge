@@ -65,6 +65,13 @@ builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(builder.Configuration
 builder.Services.AddHostedService<IngestWriterService>();
 builder.Services.AddHostedService<DispatchEngine>();
 
+//HTTPConnectionPool
+builder.Services.AddSingleton(_ =>
+{
+    var handler = new SocketsHttpHandler();
+    return new HttpClient(handler);
+});
+
 var jwtSection = builder.Configuration.GetSection("Jwt"); // the "Jwt:*" keys from all config sources
 builder.Services.Configure<JwtSettings>(jwtSection); // DI binds this to JwtSettings on demand, for IOptions<JwtSettings>
 
