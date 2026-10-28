@@ -72,7 +72,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     PM("<b>PartitionMaintenanceService</b> · every 12 h<br/>create this week + 3 ahead<br/>detach + drop expired weeks")
-    DW("<b>DispatchEngine</b> · 2 loops, background<br/>claim up to 200: FOR UPDATE SKIP LOCKED, 2-min lease<br/>planned, Phase 1: sign · send · retry · dead-letter")
+    DW("<b>DispatchEngine</b> · 2 loops, background<br/>claim up to 200: FOR UPDATE SKIP LOCKED, 2-min lease<br/>send one by one, per-row timeout · batched delete on 2xx<br/>planned, Phase 1: sign · parallel send · dead-letter")
     CL("<b>CleanupService</b> · every 30 min<br/>delete marked event types")
 
     Events[("Events<br/>weekly partitions")]
@@ -85,9 +85,9 @@ flowchart LR
 
     PM -->|"create · detach · drop partitions"| Events
     DW -.->|"payload, joined at claim"| Events
-    DW -->|"claim: set LeasedBy · LeaseExpiresAt<br/>planned: retry · delete on 2xx"| Outbox
+    DW -->|"claim: set lease · AttemptCount + 1 · next ScheduledAt (backoff + jitter)<br/>delete on 2xx"| Outbox
     DW -->|"read URL · key · timeout at claim<br/>Phase 2: write circuit state"| Destinations
-    DW -->|"planned: signed POST"| Sub
+    DW -->|"POST (unsigned)<br/>planned: HMAC signature"| Sub
     DW -->|"planned: poison · retry limit · age cap"| DL
     CL -->|"planned: purge old"| DL
     CL -->|"planned: delete older than 7 days"| Idem
