@@ -22,6 +22,7 @@ public class DispatchEngine : BackgroundService
         _httpClient = httpClient;
     }
 
+
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var dispatchers = new Task[_maxDispatchEngines];
@@ -49,7 +50,7 @@ public class DispatchEngine : BackgroundService
                 {
                     await Task.Delay(500, stoppingToken);
                 }
-
+                await SendBatchAsync(batch, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -61,7 +62,7 @@ public class DispatchEngine : BackgroundService
                 await Task.Delay(5000, stoppingToken);
             }
         }
-    } 
+    }
 
     private async Task<List<ClaimedDelivery>> ClaimBatchAsync(string leasedBy, CancellationToken stoppingToken)
     {
@@ -106,10 +107,13 @@ public class DispatchEngine : BackgroundService
         {
             ids.Add(batch[i].Id);
         }
+
         var queryToUpdate = $"""
             UPDATE "DeliveryOutboxes"
             SET "LeasedBy" = @leasedBy,
-            "LeaseExpiresAt" = NOW() + INTERVAL '120 seconds'
+            "LeaseExpiresAt" = NOW() + INTERVAL '120 seconds',
+            "AttemptCount" = "AttemptCount" + 1,
+            "ScheduledAt" = NOW() + power(2, "AttemptCount") * INTERVAL '5 minutes' + random() * INTERVAL '5 minutes'
             WHERE "Id" = ANY(@ids)
             """;
 
@@ -118,9 +122,59 @@ public class DispatchEngine : BackgroundService
         updateCommand.Parameters.AddWithValue("ids", ids);
         await updateCommand.ExecuteNonQueryAsync(stoppingToken);
         await transaction.CommitAsync(stoppingToken);
-        
-        return batch;
 
+        return batch;
+    }
+
+    public async Task SendBatchAsync(List<ClaimedDelivery> batch, CancellationToken stoppingToken)
+    {
+        var deliveredIds = new List<long>();
+        for (int i = 0; i < batch.Count; i++)
+        {
+            var delivery = batch[i];
+            try
+            {
+                using var timerToken = new CancellationTokenSource(delivery.TimeoutMilliseconds);
+                using var content = new ByteArrayContent(delivery.Payload);
+                using var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timerToken.Token);
+                using var response = await _httpClient.PostAsync(delivery.Url, content, linkedToken.Token);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    deliveredIds.Add(batch[i].Id);
+                }
+
+                _logger.LogInformation("Row {Id} -> {Status}", delivery.Id, response.StatusCode);
+
+            }
+            catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Timed out when delivering, outbox ID: {id}", delivery.Id);
+            }
+            catch (HttpRequestException e)
+            {
+                _logger.LogWarning(e, "HTTP request exception on outbox ID : {id}", delivery.Id);
+            }
+
+
+        }
+        await DeleteSentBatchAsync(deliveredIds, stoppingToken);
+    }
+
+    public async Task DeleteSentBatchAsync(List<long> deliveredIds, CancellationToken stoppingToken)
+    {
+        await using var connection = await _dataSource.OpenConnectionAsync(stoppingToken);
+        var queryToDelete = """DELETE FROM "DeliveryOutboxes" WHERE "Id" = ANY(@ids)""";
+        await using var command = new NpgsqlCommand(queryToDelete, connection);
+        command.Parameters.AddWithValue("ids", deliveredIds);
+        try
+        {
+            await command.ExecuteNonQueryAsync(stoppingToken);
+        }
+        catch (Exception e) when (!stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(e, "Deletion failed");
+        }
 
     }
 }
