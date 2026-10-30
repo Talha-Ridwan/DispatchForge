@@ -107,6 +107,24 @@ Table DeliveryOutboxes {
   }
 }
 
+// Deliveries we gave up on. Entity only (2026-10-30): no migration, no indexes yet.
+// No FKs on purpose: copies survive event partition drops and destination/tenant deletes.
+Table DeadLetters {
+  Id bigint [pk, increment]
+  TenantId uuid [not null]
+  DestinationId uuid [not null]
+  Url text [not null, note: 'copy at give-up time; the destination may change it later']
+  EventId uuid [not null, note: 'copied from the event']
+  ReceivedAt timestamptz [not null, note: 'copied from the event']
+  EventTypeId uuid [not null, note: 'copied from the event']
+  IdempotencyKey text [not null, note: 'copied from the event']
+  Payload bytea [not null, note: 'copied from the event']
+  AttemptCount int [not null]
+  LastStatusCode int [note: 'null = no response (timeout, connection error)']
+  LastError text [not null]
+  DeadLetteredAt timestamptz [not null]
+}
+
 // ---------- Foreign keys (all of them; mirrors AppDbContext) ----------
 
 Ref: EventTypes.TenantId > Tenants.Id [delete: restrict]

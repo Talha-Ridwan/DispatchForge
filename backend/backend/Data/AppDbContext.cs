@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<Event> Events => Set<Event>();
     public DbSet<DeliveryOutbox> DeliveryOutboxes => Set<DeliveryOutbox>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<DeadLetter> DeadLetters => Set<DeadLetter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

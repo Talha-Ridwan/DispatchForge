@@ -1,4 +1,6 @@
-using System;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using backend.DataStructure;
 using Npgsql;
 
@@ -7,6 +9,7 @@ namespace backend.BackgroundJob;
 public class DispatchEngine : BackgroundService
 {
     private const int _maxDispatchEngines = 2;
+    private const int _maxParallelSends = 50;
     private readonly NpgsqlDataSource _dataSource;
     private readonly ILogger<DispatchEngine> _logger;
     private readonly HttpClient _httpClient;
@@ -108,12 +111,19 @@ public class DispatchEngine : BackgroundService
             ids.Add(batch[i].Id);
         }
 
+        if(batch.Count == 0)
+        {
+            return batch;
+        }
+
         var queryToUpdate = $"""
             UPDATE "DeliveryOutboxes"
             SET "LeasedBy" = @leasedBy,
             "LeaseExpiresAt" = NOW() + INTERVAL '120 seconds',
             "AttemptCount" = "AttemptCount" + 1,
-            "ScheduledAt" = NOW() + power(2, "AttemptCount") * INTERVAL '5 minutes' + random() * INTERVAL '5 minutes'
+            "ScheduledAt" = NOW()
+                + LEAST(power(2, LEAST("AttemptCount", 10)) * INTERVAL '5 minutes', INTERVAL '6 hours')
+                + random() * INTERVAL '5 minutes'
             WHERE "Id" = ANY(@ids)
             """;
 
@@ -128,50 +138,134 @@ public class DispatchEngine : BackgroundService
 
     public async Task SendBatchAsync(List<ClaimedDelivery> batch, CancellationToken stoppingToken)
     {
-        var deliveredIds = new List<long>();
-        for (int i = 0; i < batch.Count; i++)
+        var outcomes = new DeliveryOutcome[batch.Count];
+        var options = new ParallelOptions
         {
-            var delivery = batch[i];
-            try
+            MaxDegreeOfParallelism = _maxParallelSends,
+            CancellationToken = stoppingToken
+        };
+
+        try
+        {
+            await Parallel.ForAsync(0, batch.Count, options, async (i, _) =>
             {
-                using var timerToken = new CancellationTokenSource(delivery.TimeoutMilliseconds);
-                using var content = new ByteArrayContent(delivery.Payload);
-                using var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timerToken.Token);
-                using var response = await _httpClient.PostAsync(delivery.Url, content, linkedToken.Token);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    deliveredIds.Add(batch[i].Id);
-                }
-
-                _logger.LogInformation("Row {Id} -> {Status}", delivery.Id, response.StatusCode);
-
-            }
-            catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogInformation("Timed out when delivering, outbox ID: {id}", delivery.Id);
-            }
-            catch (HttpRequestException e)
-            {
-                _logger.LogWarning(e, "HTTP request exception on outbox ID : {id}", delivery.Id);
-            }
-
+                outcomes[i] = await SendOneAsync(batch[i], stoppingToken);
+            });
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
 
         }
-        await DeleteSentBatchAsync(deliveredIds, stoppingToken);
+
+        var deliveredIds = new List<long>();
+        var unsentIds = new List<long>();
+        for (int i = 0; i < batch.Count; i++)
+        {
+            if (outcomes[i] == DeliveryOutcome.Delivered)
+            {
+                deliveredIds.Add(batch[i].Id);
+            }
+            else if (outcomes[i] == DeliveryOutcome.NotStarted)
+            {
+                unsentIds.Add(batch[i].Id);
+            }
+        }
+
+        await DeleteSentBatchAsync(deliveredIds);
+        await RefundUnsentAsync(unsentIds);
     }
 
-    public async Task DeleteSentBatchAsync(List<long> deliveredIds, CancellationToken stoppingToken)
+    private async Task<DeliveryOutcome> SendOneAsync(ClaimedDelivery delivery, CancellationToken stoppingToken)
     {
-        await using var connection = await _dataSource.OpenConnectionAsync(stoppingToken);
+        try
+        {
+            using var timerToken = new CancellationTokenSource(delivery.TimeoutMilliseconds);
+            using var content = new ByteArrayContent(delivery.Payload);
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+            content.Headers.Add("X-DispatchForge-Timestamp", timestamp);
+            content.Headers.Add("X-DispatchForge-Signature", Sign(delivery.SigningKey, timestamp, delivery.Payload));
+            using var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timerToken.Token);
+            using var response = await _httpClient.PostAsync(delivery.Url, content, linkedToken.Token);
+
+            _logger.LogInformation("Row {Id} -> {Status}", delivery.Id, response.StatusCode);
+
+            return response.IsSuccessStatusCode ? DeliveryOutcome.Delivered : DeliveryOutcome.Failed;
+        }
+        catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Timed out when delivering, outbox ID: {id}", delivery.Id);
+            return DeliveryOutcome.Failed;
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return DeliveryOutcome.NotStarted;
+        }
+        catch (HttpRequestException e)
+        {
+            _logger.LogWarning(e, "HTTP request exception on outbox ID : {id}", delivery.Id);
+            return DeliveryOutcome.Failed;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Unexpected error on outbox ID : {id}", delivery.Id);
+            return DeliveryOutcome.Failed;
+        }
+    }
+
+    private static string Sign(byte[] key, string timestamp, byte[] payload)
+    {
+        var prefix = Encoding.UTF8.GetBytes(timestamp + ".");
+        var toSign = new byte[prefix.Length + payload.Length];
+        prefix.CopyTo(toSign, 0);
+        payload.CopyTo(toSign, prefix.Length);
+        return Convert.ToHexStringLower(HMACSHA256.HashData(key, toSign));
+    }
+
+    private async Task RefundUnsentAsync(List<long> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        var queryToRefund = """
+            UPDATE "DeliveryOutboxes"
+            SET "AttemptCount" = "AttemptCount" - 1,
+            "ScheduledAt" = NOW(),
+            "LeasedBy" = NULL,
+            "LeaseExpiresAt" = NULL
+            WHERE "Id" = ANY(@ids)
+            """;
+
+        try
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync(CancellationToken.None);
+            await using var command = new NpgsqlCommand(queryToRefund, connection);
+            command.Parameters.AddWithValue("ids", ids);
+            await command.ExecuteNonQueryAsync(CancellationToken.None);
+            _logger.LogInformation("Shutdown: refunded {Count} unsent rows", ids.Count);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Refund of {Count} unsent rows failed", ids.Count);
+        }
+    }
+
+    public async Task DeleteSentBatchAsync(List<long> deliveredIds)
+    {
+        if(deliveredIds.Count == 0)
+        {
+            return;
+        }
+        await using var connection = await _dataSource.OpenConnectionAsync(CancellationToken.None);
         var queryToDelete = """DELETE FROM "DeliveryOutboxes" WHERE "Id" = ANY(@ids)""";
         await using var command = new NpgsqlCommand(queryToDelete, connection);
         command.Parameters.AddWithValue("ids", deliveredIds);
         try
         {
-            await command.ExecuteNonQueryAsync(stoppingToken);
+            await command.ExecuteNonQueryAsync(CancellationToken.None);
         }
-        catch (Exception e) when (!stoppingToken.IsCancellationRequested)
+        catch (Exception e)
         {
             _logger.LogWarning(e, "Deletion failed");
         }
